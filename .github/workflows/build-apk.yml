@@ -22,6 +22,11 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Prepare app icon
+        run: |
+          mkdir -p app/src/main/res/drawable
+          cp icon.png app/src/main/res/drawable/icon.png
+
       - name: Build APK
         run: gradle assembleDebug
 
