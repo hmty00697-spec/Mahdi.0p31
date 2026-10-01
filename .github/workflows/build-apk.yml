@@ -25,7 +25,7 @@ jobs:
       - name: Prepare app icon
         run: |
           mkdir -p app/src/main/res/drawable
-          cp icon.png app/src/main/res/drawable/icon.png
+          cp file_00000000164c82108963ba0e77d862d5.png app/src/main/res/drawable/icon.png
 
       - name: Build APK
         run: gradle assembleDebug
