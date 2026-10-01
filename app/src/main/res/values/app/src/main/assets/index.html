@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Glow Ball</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #ffffff;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: #fff;
+    overflow: hidden;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#menu {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255,255,255,0.96);
+    z-index: 10;
+}
+
+.logo {
+    font-size: 42px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    color: #168cff;
+    text-shadow:
+        0 0 8px rgba(22,140,255,.5),
+        0 0 20px rgba(255,70,160,.3);
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: #777;
+    margin-bottom: 30px;
+    font-size: 15px;
+}
+
+.levelText {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+    margin: 15px 0;
+}
+
+.levelControls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.smallBtn {
+    width: 55px;
+    height: 55px;
+    border: none;
+    border-radius: 15px;
+    background: #f2f2f2;
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+
+#levelNumber {
+    width: 45px;
+    text-align: center;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.modeButtons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.modeBtn {
+    border: none;
+    border-radius: 14px;
+    padding: 13px 20px;
+    background: #eee;
+    color: #333;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.modeBtn.active {
+    color: white;
+    background: linear-gradient(135deg,#168cff,#ff4fa3);
+    box-shadow: 0 5px 18px rgba(22,140,255,.3);
+}
+
+#startBtn {
+    margin-top: 25px;
+    padding: 16px 50px;
+    border: none;
+    border-radius: 18px;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    background: linear-gradient(135deg,#168cff,#ff4fa3);
+    box-shadow: 0 7px 25px rgba(22,140,255,.35);
+}
+
+#pauseBtn {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 5;
+    border: none;
+    background: rgba(245,245,245,.9);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 18px;
+}
+
+#scores {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 35px;
+    z-index: 4;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.you {
+    color: #168cff;
+}
+
+.ai {
+    color: #ff4fa3;
+}
+
+#message {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    display: none;
+    z-index: 6;
+}
+
+@media (orientation: landscape) {
+    .logo {
+        font-size: 34px;
+    }
+
+    .subtitle {
+        margin-bottom: 12px;
+    }
+
+    .levelControls {
+        margin: 8px 0;
+    }
+
+    #startBtn {
+        margin-top: 12px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <canvas id="canvas"></canvas>
+
+    <div id="scores">
+        <span class="ai">AI: <span id="aiScore">0</span></span>
+        <span class="you">YOU: <span id="playerScore">0</span></span>
+    </div>
+
+    <button id="pauseBtn">Ⅱ</button>
+
+    <div id="message">PAUSED</div>
+
+    <div id="menu">
+
+        <div class="logo">GLOW BALL</div>
+        <div class="subtitle">AI BATTLE</div>
+
+        <div class="levelText">
+            AI LEVEL
+        </div>
+
+        <div class="levelControls">
+            <button class="smallBtn" id="minus">−</button>
+            <div id="levelNumber">5</div>
+            <button class="smallBtn" id="plus">+</button>
+        </div>
+
+        <div class="modeButtons">
+            <button class="modeBtn" data-mode="easy">EASY</button>
+            <button class="modeBtn active" data-mode="normal">NORMAL</button>
+            <button class="modeBtn" data-mode="hard">HARD</button>
+        </div>
+
+        <button id="startBtn">START GAME</button>
+
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let W = 0;
+let H = 0;
+
+function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+window.addEventListener("resize", resize);
+resize();
+
+const player = {
+    x: 30,
+    y: 0,
+    w: 14,
+    h: 105,
+    speed: 8
+};
+
+const ai = {
+    x: 0,
+    y: 0,
+    w: 14,
+    h: 105
+};
+
+const ball = {
+    x: 0,
+    y: 0,
+    r: 10,
+    vx: 0,
+    vy: 0,
+    speed: 6
+};
+
+let playerScore = 0;
+let aiScore = 0;
+
+let level = 5;
+let mode = "normal";
+let running = false;
+let paused = false;
+
+let touchY = null;
+
+const aiScoreEl = document.getElementById("aiScore");
+const playerScoreEl = document.getElementById("playerScore");
+const levelNumber = document.getElementById("levelNumber");
+const menu = document.getElementById("menu");
+const message = document.getElementById("message");
+
+function updateSizes() {
+    player.x = Math.max(18, W * 0.035);
+    player.h = Math.max(75, Math.min(115, H * 0.20));
+
+    ai.x = W - player.x - ai.w;
+    ai.h = player.h;
+
+    if (!running) {
+        player.y = H / 2 - player.h / 2;
+        ai.y = H / 2 - ai.h / 2;
+    }
+}
+
+function resetBall(direction = 1) {
+    ball.x = W / 2;
+    ball.y = H / 2;
+
+    ball.speed = Math.max(5, Math.min(11, 5 + level * 0.35));
+
+    const angle = (Math.random() * 0.9 - 0.45);
+
+    ball.vx = Math.cos(angle) * ball.speed * direction;
+    ball.vy = Math.sin(angle) * ball.speed;
+}
+
+function resetGame() {
+    playerScore = 0;
+    aiScore = 0;
+
+    aiScoreEl.textContent = "0";
+    playerScoreEl.textContent = "0";
+
+    updateSizes();
+
+    resetBall(Math.random() > .5 ? 1 : -1);
+}
+
+function setLevel(value) {
+    level = Math.max(1, Math.min(10, value));
+    levelNumber.textContent = level;
+}
+
+document.getElementById("minus").addEventListener("click", () => {
+    setLevel(level - 1);
+});
+
+document.getElementById("plus").addEventListener("click", () => {
+    setLevel(level + 1);
+});
+
+document.querySelectorAll(".modeBtn").forEach(btn => {
+
+    btn.addEventListener("click", () => {
+
+        document.querySelectorAll(".modeBtn")
+            .forEach(b => b.classList.remove("active"));
+
+        btn.classList.add("active");
+
+        mode = btn.dataset.mode;
+
+        if (mode === "easy") {
+            setLevel(Math.min(level, 3));
+        }
+
+        if (mode === "normal") {
+            setLevel(Math.max(4, Math.min(level, 7)));
+        }
+
+        if (mode === "hard") {
+            setLevel(Math.max(8, level));
+        }
+    });
+});
+
+document.getElementById("startBtn").addEventListener("click", () => {
+
+    menu.style.display = "none";
+    running = true;
+    paused = false;
+    message.style.display = "none";
+
+    resetGame();
+});
+
+document.getElementById("pauseBtn").addEventListener("click", () => {
+
+    if (!running) return;
+
+    paused = !paused;
+
+    message.style.display = paused ? "block" : "none";
+});
+
+function movePlayer(y) {
+
+    player.y = y - player.h / 2;
+
+    if (player.y < 0)
+        player.y = 0;
+
+    if (player.y + player.h > H)
+        player.y = H - player.h;
+}
+
+canvas.addEventListener("touchstart", e => {
+
+    if (!running || paused) return;
+
+    touchY = e.touches[0].clientY;
+
+    movePlayer(touchY);
+
+}, {passive:false});
+
+canvas.addEventListener("touchmove", e => {
+
+    if (!running || paused) return;
+
+    e.preventDefault();
+
+    touchY = e.touches[0].clientY;
+
+    movePlayer(touchY);
+
+}, {passive:false});
+
+canvas.addEventListener("mousemove", e => {
+
+    if (!running || paused) return;
+
+    movePlayer(e.clientY);
+
+});
+
+function updateAI() {
+
+    let aiSpeed;
+
+    if (mode === "easy") {
+        aiSpeed = 3.5 + level * 0.18;
+    }
+    else if (mode === "hard") {
+        aiSpeed = 6 + level * 0.35;
+    }
+    else {
+        aiSpeed = 4.5 + level * 0.25;
+    }
+
+    const target = ball.y - ai.h / 2;
+
+    if (ai.y < target)
+        ai.y += aiSpeed;
+    else
+        ai.y -= aiSpeed;
+
+    if (ai.y < 0)
+        ai.y = 0;
+
+    if (ai.y + ai.h > H)
+        ai.y = H - ai.h;
+}
+
+function collision(paddle) {
+
+    return (
+        ball.x - ball.r < paddle.x + paddle.w &&
+        ball.x + ball.r > paddle.x &&
+        ball.y - ball.r < paddle.y + paddle.h &&
+        ball.y + ball.r > paddle.y
+    );
+}
+
+function hitPaddle(paddle, direction) {
+
+    const relative =
+        (ball.y - (paddle.y + paddle.h / 2))
+        / (paddle.h / 2);
+
+    const angle = relative * 1.05;
+
+    const speed = Math.min(
+        Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy) + 0.25,
+        13
+    );
+
+    ball.vx = Math.cos(angle) * speed * direction;
+    ball.vy = Math.sin(angle) * speed;
+
+    if (direction > 0) {
+        ball.x = paddle.x + paddle.w + ball.r;
+    } else {
+        ball.x = paddle.x - ball.r;
+    }
+}
+
+function scorePoint(who) {
+
+    if (who === "player") {
+        playerScore++;
+        playerScoreEl.textContent = playerScore;
+        resetBall(-1);
+    }
+    else {
+        aiScore++;
+        aiScoreEl.textContent = aiScore;
+        resetBall(1);
+    }
+}
+
+function update() {
+
+    if (!running || paused) return;
+
+    updateAI();
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.y - ball.r <= 0) {
+        ball.y = ball.r;
+        ball.vy = Math.abs(ball.vy);
+    }
+
+    if (ball.y + ball.r >= H) {
+        ball.y = H - ball.r;
+        ball.vy = -Math.abs(ball.vy);
+    }
+
+    if (ball.vx < 0 && collision(player)) {
+        hitPaddle(player, 1);
+    }
+
+    if (ball.vx > 0 && collision(ai)) {
+        hitPaddle(ai, -1);
+    }
+
+    if (ball.x < -30) {
+        scorePoint("ai");
+    }
+
+    if (ball.x > W + 30) {
+        scorePoint("player");
+    }
+}
+
+function drawGlowCircle(x, y, radius, color) {
+
+    ctx.save();
+
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = color;
+
+    ctx.fillStyle = color;
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawPaddle(paddle, color) {
+
+    ctx.save();
+
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = color;
+
+    ctx.fillStyle = color;
+
+    ctx.beginPath();
+
+    const radius = 8;
+
+    ctx.roundRect(
+        paddle.x,
+        paddle.y,
+        paddle.w,
+        paddle.h,
+        radius
+    );
+
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function draw() {
+
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+
+    // وسط زمین
+    ctx.save();
+
+    ctx.setLineDash([10, 12]);
+    ctx.strokeStyle = "#e5e5e5";
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // بازیکن
+    drawPaddle(player, "#168cff");
+
+    // هوش مصنوعی
+    drawPaddle(ai, "#ff4fa3");
+
+    // توپ
+    drawGlowCircle(
+        ball.x,
+        ball.y,
+        ball.r,
+        "#8d4dff"
+    );
+
+    // هاله توپ
+    ctx.save();
+
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = "#8d4dff";
+
+    ctx.beginPath();
+    ctx.arc(
+        ball.x,
+        ball.y,
+        ball.r * 2.2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function loop() {
+
+    update();
+    draw();
+
+    requestAnimationFrame(loop);
+}
+
+updateSizes();
+resetBall(1);
+loop();
+</script>
+
+</body>
+              </html>
